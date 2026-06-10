@@ -1,0 +1,101 @@
+openapi: 3.0.3
+info:
+  title: DRAM Price Tracker API
+  description: API for tracking DRAM price records with SQLite backend.
+  version: '1.0.0'
+servers:
+  - url: http://127.0.0.1:3000
+paths:
+  /api/prices:
+    get:
+      summary: 查詢價格紀錄
+      parameters:
+        - in: query
+          name: query
+          schema:
+            type: string
+          description: 搜尋關鍵字，可匹配商品名稱、來源或日期
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          description: 起始日期 (YYYY-MM-DD)
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          description: 結束日期 (YYYY-MM-DD)
+      responses:
+        '200':
+          description: 成功回傳價格紀錄列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PriceRecord'
+    post:
+      summary: 新增價格紀錄
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewPriceRecord'
+      responses:
+        '201':
+          description: 成功新增紀錄
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceRecord'
+        '400':
+          description: 欄位驗證錯誤
+        '500':
+          description: 伺服器錯誤
+  /api/products:
+    get:
+      summary: 取得已上傳的商品名稱清單
+      responses:
+        '200':
+          description: 成功回傳商品清單
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+components:
+  schemas:
+    PriceRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+          format: date
+        product:
+          type: string
+        price:
+          type: number
+        source:
+          type: string
+    NewPriceRecord:
+      type: object
+      required:
+        - date
+        - product
+        - price
+      properties:
+        date:
+          type: string
+          format: date
+        product:
+          type: string
+        price:
+          type: number
+        source:
+          type: string
