@@ -39,7 +39,7 @@ npm run dev
 1. 安裝套件：`npm install`
 2. 開發測試：`npm run dev`
 3. 建置靜態網站：`npm run build`
-4. 部署到 GitHub Pages：`npm run deploy`
+4. 部署到 GitHub Pages：如果你想使用 GitHub Actions，請確保此 repository 設定中的 Pages source 選擇 `GitHub Actions`。
 
 如果要手動設定 GitHub Pages，請將 `dist/` 資料夾內容部署到 GitHub Pages。
 
