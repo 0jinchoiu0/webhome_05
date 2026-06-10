@@ -1,74 +1,102 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 const title = 'DRAM 物價追蹤站'
 const sourceSite = 'https://www.trendforce.com.tw/price/dram/dram_spot'
+const localStorageKey = 'dram-price-tracker-records'
 const date = ref(new Date().toISOString().slice(0, 10))
-const product = ref('DDR5')
+const product = ref('DDR5 5600')
 const price = ref('')
 const filter = ref('')
 const records = ref([])
-const status = ref('')
+const status = ref('資料會儲存在本機瀏覽器 localStorage，可直接部署到 GitHub Pages。')
 
-const apiBase = '/api'
-
-const loadPrices = async () => {
-  status.value = '讀取中...'
-  try {
-    const query = encodeURIComponent(filter.value.trim())
-    const response = await fetch(`${apiBase}/prices${query ? `?query=${query}` : ''}`)
-    const data = await response.json()
-    records.value = data
-    status.value = `已載入 ${data.length} 筆記錄`
-  } catch (error) {
-    status.value = '讀取失敗，請確認後端是否已啟動。'
-    console.error(error)
+const loadRecords = () => {
+  const raw = localStorage.getItem(localStorageKey)
+  if (raw) {
+    try {
+      records.value = JSON.parse(raw)
+    } catch {
+      records.value = []
+    }
+  } else {
+    records.value = [
+      {
+        id: Date.now(),
+        date: '2026-06-10',
+        product: 'DDR5 5600',
+        price: 2350,
+        source: sourceSite,
+      },
+    ]
+    localStorage.setItem(localStorageKey, JSON.stringify(records.value))
   }
 }
 
-const addPrice = async () => {
-  if (!date.value || !product.value || !price.value) {
+const saveRecords = () => {
+  localStorage.setItem(localStorageKey, JSON.stringify(records.value))
+}
+
+const filteredRecords = computed(() => {
+  const all = [...records.value].sort((a, b) => {
+    if (a.date === b.date) return b.id - a.id
+    return a.date < b.date ? 1 : -1
+  })
+  const q = filter.value.trim().toLowerCase()
+  if (!q) {
+    return all
+  }
+  return all.filter((record) => {
+    return (
+      record.date.includes(q) ||
+      record.product.toLowerCase().includes(q) ||
+      String(record.price).includes(q) ||
+      record.source.toLowerCase().includes(q)
+    )
+  })
+})
+
+const addPrice = () => {
+  if (!date.value || !product.value.trim() || !price.value) {
     status.value = '請填寫日期、商品名稱與價格。'
     return
   }
-  const body = {
+
+  records.value.unshift({
+    id: Date.now(),
     date: date.value,
-    product: product.value,
+    product: product.value.trim(),
     price: Number(price.value),
-    source: sourceSite
-  }
-
-  try {
-    const response = await fetch(`${apiBase}/prices`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    })
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(error)
-    }
-    status.value = '已新增記錄，正在刷新列表。'
-    price.value = ''
-    await loadPrices()
-  } catch (error) {
-    status.value = `新增失敗：${error.message}`
-    console.error(error)
-  }
+    source: sourceSite,
+  })
+  saveRecords()
+  status.value = '已新增記錄。'
+  price.value = ''
 }
 
-const search = () => {
-  loadPrices()
+const clearFilter = () => {
+  filter.value = ''
 }
 
-onMounted(loadPrices)
+const statusMessage = computed(() => {
+  if (!records.value.length) {
+    return '目前尚無紀錄，請新增價格。'
+  }
+  return `共 ${filteredRecords.value.length} 筆顯示結果`
+})
+
+onMounted(loadRecords)
 </script>
 
 <template>
   <div class="app-shell">
     <header>
       <h1>{{ title }}</h1>
-      <p class="subtitle">關注商品：記憶體價格 — 來源網站：<a :href="sourceSite" target="_blank" rel="noopener">TrendForce DRAM Spot</a></p>
+      <p class="subtitle">
+        關注商品：記憶體價格 — 來源網站：
+        <a :href="sourceSite" target="_blank" rel="noopener">TrendForce DRAM Spot</a>
+      </p>
+      <p class="hint">此版本為純靜態前端練習作品，資料儲存在本機 localStorage。</p>
     </header>
 
     <section class="card entry-card">
@@ -93,10 +121,14 @@ onMounted(loadPrices)
     <section class="card search-card">
       <h2>查詢與物價變化</h2>
       <div class="search-row">
-        <input type="text" v-model="filter" placeholder="搜尋記憶體類型或日期" @input="search" />
-        <button type="button" @click="loadPrices">重新整理</button>
+        <input
+          type="text"
+          v-model="filter"
+          placeholder="搜尋記憶體類型、日期或價格"
+        />
+        <button type="button" @click="clearFilter">清除搜尋</button>
       </div>
-      <p class="status">{{ status }}</p>
+      <p class="status">{{ statusMessage }}</p>
       <table>
         <thead>
           <tr>
@@ -107,11 +139,16 @@ onMounted(loadPrices)
           </tr>
         </thead>
         <tbody>
-          <tr v-for="record in records" :key="record.id">
+          <tr v-for="record in filteredRecords" :key="record.id">
             <td>{{ record.date }}</td>
             <td>{{ record.product }}</td>
             <td>{{ record.price }}</td>
-            <td><a :href="record.source" target="_blank" rel="noopener">TrendForce</a></td>
+            <td>
+              <a :href="record.source" target="_blank" rel="noopener">TrendForce</a>
+            </td>
+          </tr>
+          <tr v-if="filteredRecords.length === 0">
+            <td colspan="4" class="empty-row">找不到符合條件的紀錄。</td>
           </tr>
         </tbody>
       </table>
@@ -134,9 +171,13 @@ h1 {
   font-size: clamp(2rem, 3vw, 3rem);
   margin-bottom: 8px;
 }
-.subtitle {
+.subtitle,
+.hint {
   color: #555;
   margin: 0;
+}
+.hint {
+  margin-top: 8px;
 }
 .card {
   background: #fff;
@@ -171,7 +212,8 @@ button.primary {
   border-radius: 10px;
   cursor: pointer;
 }
-button.primary:hover {
+button.primary:hover,
+button[type='button']:hover {
   background: #1d4ed8;
 }
 .search-row {
@@ -197,5 +239,10 @@ th {
 .status {
   margin: 0 0 12px;
   color: #444;
+}
+.empty-row {
+  text-align: center;
+  color: #888;
+  padding: 14px 0;
 }
 </style>

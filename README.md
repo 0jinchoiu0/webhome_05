@@ -32,18 +32,16 @@ npm install
 npm run dev
 ```
 
-### Run Backend
+### GitHub Pages 靜態部署
 
-```sh
-npm run backend
-```
+本專案現在為純前端靜態網站，資料儲存在瀏覽器 localStorage，可直接部署到 GitHub Pages。
 
-### Local Full Stack Setup
+1. 安裝套件：`npm install`
+2. 開發測試：`npm run dev`
+3. 建置靜態網站：`npm run build`
+4. 部署到 GitHub Pages：`npm run deploy`
 
-1. 啟動後端 API：`npm run backend`，預設監聽 `http://127.0.0.1:3000`
-2. 啟動前端開發伺服器：`npm run dev`
-3. 前端透過 Vite proxy 將 `/api` 轉發到 Express
-4. API 規格定義檔：`openapi.yaml`
+如果要手動設定 GitHub Pages，請將 `dist/` 資料夾內容部署到 GitHub Pages。
 
 ### Compile and Minify for Production
 
